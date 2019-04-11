@@ -27,16 +27,22 @@ if sys.version_info[0] == 2:
         def load_module(self, fullname):
             logger.info('load_module: fullname: %s', fullname)
 
-            mod = self.hooks[fullname]
-            newmod = sys.modules.setdefault(fullname, imp.new_module(fullname))
-            newmod.__file__ = sys.modules[mod.__module__].__file__
-            newmod.__loader__ = self
-            newmod.__package__ = ''
+            # allow the hook value to either be a single mod, or a list of mods
+            # allows us to emulate idaapi, which does 'from X import *'
+            # like: 'from ida_netnode import *'
+            mods = self.hooks[fullname]
+            if not isinstance(mods, list):
+                mods = [mods, ]
+            for mod in mods:
+                newmod = sys.modules.setdefault(fullname, imp.new_module(fullname))
+                newmod.__file__ = sys.modules[mod.__module__].__file__
+                newmod.__loader__ = self
+                newmod.__package__ = ''
 
-            for attr in dir(mod):
-                if attr.startswith('__'):
-                    continue
-                newmod.__dict__[attr] = getattr(mod, attr)
+                for attr in dir(mod):
+                    if attr.startswith('__'):
+                        continue
+                    newmod.__dict__[attr] = getattr(mod, attr)
             return newmod
 
         def install(self):
@@ -75,11 +81,17 @@ elif sys.version_info[0] == 3:
             module.__loader__ = self
             module.__package__ = ''
 
-            mod = self.hooks[spec.name]
-            for attr in dir(mod):
-                if attr.startswith('__'):
-                    continue
-                module.__dict__[attr] = getattr(mod, attr)
+            # allow the hook value to either be a single mod, or a list of mods
+            # allows us to emulate idaapi, which does 'from X import *'
+            # like: 'from ida_netnode import *'
+            mods = self.hooks[spec.name]
+            if not isinstance(mods, list):
+                mods = [mods, ]
+            for mod in mods:
+                for attr in dir(mod):
+                    if attr.startswith('__'):
+                        continue
+                    module.__dict__[attr] = getattr(mod, attr)
             return module
 
         def exec_module(self, module):
@@ -101,7 +113,7 @@ def install(db, ScreenEA=None):
 
     hooks = {
         'idc': api.idc,
-        'idaapi': api.idaapi,
+        'idaapi': [api.idaapi, api.ida_funcs, api.ida_bytes, api.ida_netnode, api.ida_nalt,api.ida_name,api.ida_entry],
         'idautils': api.idautils,
         'ida_funcs': api.ida_funcs,
         'ida_bytes': api.ida_bytes,

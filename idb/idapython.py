@@ -17,6 +17,8 @@ import idb.analysis
 logger = logging.getLogger(__name__)
 
 
+# hard-coded kernel version for now
+KERNEL_VERSION = "6.95"
 
 # via: https://stackoverflow.com/a/33672499/87207
 def memoized_method(*lru_args, **lru_kwargs):
@@ -375,6 +377,11 @@ class ida_netnode:
     def __init__(self, db, api):
         self.idb = db
         self.api = api
+
+        if self.idb.wordsize == 4:
+            self.BADNODE = 0xFFFFFFFF
+        elif self.idb.wordsize == 8:
+            self.BADNODE = 0xFFFFFFFFFFFFFFFF
 
     def netnode(self, *args, **kwargs):
         return idb.netnode.Netnode(self.idb, *args, **kwargs)
@@ -1768,6 +1775,9 @@ class idaapi:
         for xref in idb.analysis.get_crefs_from(self.idb, ea,
                                                 types=[idaapi.fl_JN, idaapi.fl_JF, idaapi.fl_F]):
             yield xref
+
+    def get_kernel_version(self):
+        return KERNEL_VERSION
 
     def FlowChart(self, func):
         '''

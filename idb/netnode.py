@@ -166,7 +166,7 @@ Entry = namedtuple('Entry', ['key', 'parsed_key', 'value'])
 
 
 class Netnode(object):
-    def __init__(self, db, nodeid):
+    def __init__(self, db, nodeid, namelen=0, do_create=False):
         '''
         Args:
           db (idb.IDB): the IDA Pro database.
@@ -195,8 +195,10 @@ class Netnode(object):
         self.wordsize = self.idb.wordsize
         if self.wordsize == 4:
             self.nodebase = 0xFF000000
+            self.BADNODE = 0xFFFFFFFF
         elif self.wordsize == 8:
             self.nodebase = 0xFF00000000000000
+            self.BADNODE = 0xFFFFFFFFFFFFFFFF
         else:
             raise RuntimeError('unexpected wordsize')
 
@@ -295,6 +297,25 @@ class Netnode(object):
         for entry in self.get_tag_entries(tag=tag):
             yield entry
 
+    def sup1st(self, tag=TAGS.SUPVAL):
+        return self.supfirst(tag)
+
+    def supnxt(self, cur, tag=TAGS.SUPVAL):
+        return self.supnext(cur, tag)
+
+    def supfirst(self, tag=TAGS.SUPVAL):
+        self._cachegen = self.sups(tag)
+        try:
+            return self._cachegen.next()
+        except StopIteration:
+            return self.BADNODE
+
+    def supnext(self, cur, tag=TAGS.SUPVAL):
+        try:
+            return self._cachegen.next()
+        except StopIteration:
+            return self.BADNODE
+
     def altval(self, index, tag=TAGS.ALTVAL):
         return as_int(self.get_val(index, tag))
 
@@ -352,6 +373,25 @@ class Netnode(object):
     def hashentries(self, tag=TAGS.HASHVAL):
         for entry in self.get_tag_entries(tag=tag):
             yield entry
+
+    def hash1st(self, tag=TAGS.HASHVAL):
+        return self.hashfirst(tag)
+
+    def hashnxt(self, cur, tag=TAGS.HASHVAL):
+        return self.hashnext(cur, tag)
+
+    def hashfirst(self, tag=TAGS.HASHVAL):
+        self._cachegen = self.hashes(tag)
+        try:
+            return self._cachegen.next()
+        except StopIteration:
+            return self.BADNODE
+
+    def hashnext(self, cur, tag=TAGS.HASHVAL):
+        try:
+            return self._cachegen.next()
+        except StopIteration:
+            return self.BADNODE
 
     def valobj(self):
         '''
